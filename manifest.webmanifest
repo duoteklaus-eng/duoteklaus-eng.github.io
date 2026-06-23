@@ -1,0 +1,18 @@
+{
+  "name": "今天做什么",
+  "short_name": "今天做什么",
+  "description": "一个帮你随机决定今天做什么的小转盘。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f5ef",
+  "theme_color": "#d95f59",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
