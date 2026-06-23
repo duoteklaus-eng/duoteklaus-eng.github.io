@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>今天做什么</title>
+  <meta name="theme-color" content="#d95f59">
+  <meta name="description" content="一个帮你随机决定今天做什么的小转盘。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --ink: #172026;
+      --muted: #68737d;
+      --line: #d8d3c6;
+      --red: #d95f59;
+      --blue: #3776a9;
+      --green: #3f8d73;
+      --yellow: #e7b94d;
+      --violet: #7d69a8;
+      --teal: #4d9996;
+      --rose: #c26f8d;
+      --orange: #ef8f62;
+      --shadow: 0 22px 60px rgba(34, 40, 44, .18);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 15% 20%, rgba(217, 95, 89, .18), transparent 32%),
+        radial-gradient(circle at 85% 12%, rgba(55, 118, 169, .16), transparent 30%),
+        linear-gradient(135deg, #f7f5ef 0%, #ece7da 100%);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(1160px, calc(100vw - 32px));
+      min-height: min(740px, calc(100vh - 32px));
+      display: grid;
+      grid-template-columns: minmax(300px, 1fr) minmax(340px, 470px);
+      gap: 36px;
+      align-items: center;
+      padding: 34px;
+      border: 1px solid rgba(74, 71, 61, .2);
+      border-radius: 8px;
+      background: rgba(255, 252, 245, .76);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      min-width: 0;
+    }
+
+    .wheel-wrap {
+      position: relative;
+      width: min(540px, 84vw);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .pointer {
+      position: absolute;
+      top: 4%;
+      z-index: 4;
+      width: 0;
+      height: 0;
+      border-left: 18px solid transparent;
+      border-right: 18px solid transparent;
+      border-top: 34px solid var(--ink);
+      filter: drop-shadow(0 6px 4px rgba(0, 0, 0, .18));
+    }
+
+    .wheel {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      border: 12px solid #fffaf0;
+      background:
+        conic-gradient(
+          var(--red) 0deg 45deg,
+          var(--yellow) 45deg 90deg,
+          var(--blue) 90deg 135deg,
+          var(--green) 135deg 180deg,
+          var(--orange) 180deg 225deg,
+          var(--violet) 225deg 270deg,
+          var(--teal) 270deg 315deg,
+          var(--rose) 315deg 360deg
+        );
+      box-shadow: inset 0 0 0 2px rgba(23, 32, 38, .16), 0 28px 45px rgba(23, 32, 38, .2);
+      transition: transform 1.15s cubic-bezier(.12, .68, .18, 1);
+    }
+
+    .wheel::before,
+    .wheel::after {
+      content: "";
+      position: absolute;
+      inset: 16%;
+      border-radius: 50%;
+      background: rgba(255, 250, 240, .94);
+      box-shadow: inset 0 0 0 1px rgba(23, 32, 38, .12);
+    }
+
+    .wheel::after {
+      inset: 43%;
+      background: var(--ink);
+      box-shadow: 0 10px 20px rgba(23, 32, 38, .24);
+    }
+
+    .ticks {
+      position: absolute;
+      inset: 7%;
+      border-radius: 50%;
+      background:
+        linear-gradient(90deg, transparent 49.4%, rgba(23, 32, 38, .28) 49.4% 50.6%, transparent 50.6%),
+        linear-gradient(45deg, transparent 49.4%, rgba(23, 32, 38, .28) 49.4% 50.6%, transparent 50.6%),
+        linear-gradient(135deg, transparent 49.4%, rgba(23, 32, 38, .28) 49.4% 50.6%, transparent 50.6%);
+      pointer-events: none;
+    }
+
+    .panel {
+      min-width: 0;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(38px, 6vw, 72px);
+      line-height: .98;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 0 0 26px;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+    }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .filter {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--ink);
+      background: rgba(255, 255, 255, .52);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .filter[aria-pressed="true"] {
+      color: white;
+      border-color: var(--ink);
+      background: var(--ink);
+    }
+
+    .result {
+      min-height: 198px;
+      display: grid;
+      align-content: center;
+      gap: 12px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffaf0;
+    }
+
+    .label {
+      width: fit-content;
+      padding: 4px 9px;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--green);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .idea {
+      margin: 0;
+      font-size: clamp(24px, 3.1vw, 38px);
+      line-height: 1.18;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .tiny {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .spin,
+    .save {
+      min-height: 50px;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .spin {
+      color: #fff;
+      background: var(--red);
+      box-shadow: 0 12px 22px rgba(217, 95, 89, .28);
+    }
+
+    .save {
+      width: 56px;
+      color: var(--ink);
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .64);
+    }
+
+    .saved {
+      margin-top: 22px;
+    }
+
+    .saved h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .saved-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .saved-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 10px 12px;
+      border: 1px solid rgba(216, 211, 198, .8);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .48);
+      color: #39434a;
+      font-size: 14px;
+    }
+
+    .empty {
+      color: var(--muted);
+    }
+
+    @media (max-width: 860px) {
+      body {
+        display: block;
+      }
+
+      main {
+        width: 100%;
+        min-height: 100vh;
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 22px;
+        border: 0;
+        border-radius: 0;
+      }
+
+      .wheel-wrap {
+        width: min(330px, 78vw);
+      }
+
+      .filters {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 430px) {
+      .filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="stage" aria-label="灵感转盘">
+      <div class="wheel-wrap">
+        <div class="pointer"></div>
+        <div class="wheel" id="wheel"></div>
+        <div class="ticks"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h1>今天做什么</h1>
+      <p class="sub">让转盘替你挑一件事。可以认真一点，也可以轻松一点，今天不必每分钟都很有用。</p>
+
+      <div class="filters" aria-label="任务类型">
+        <button class="filter" type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button class="filter" type="button" data-filter="fitness" aria-pressed="false">健身</button>
+        <button class="filter" type="button" data-filter="learn" aria-pressed="false">学习</button>
+        <button class="filter" type="button" data-filter="game" aria-pressed="false">游戏</button>
+        <button class="filter" type="button" data-filter="empty" aria-pressed="false">放空</button>
+        <button class="filter" type="button" data-filter="scroll" aria-pressed="false">刷抖音</button>
+        <button class="filter" type="button" data-filter="show" aria-pressed="false">看剧</button>
+        <button class="filter" type="button" data-filter="create" aria-pressed="false">创作</button>
+      </div>
+
+      <div class="result" aria-live="polite">
+        <span class="label" id="tag">健身</span>
+        <p class="idea" id="idea">做 12 分钟低强度拉伸，重点照顾肩颈和腰背。</p>
+        <p class="tiny" id="hint">不追求燃脂，先把身体从久坐里捞出来。</p>
+      </div>
+
+      <div class="actions">
+        <button class="spin" type="button" id="spin">转一下</button>
+        <button class="save" type="button" id="save" aria-label="收藏当前任务">★</button>
+      </div>
+
+      <section class="saved">
+        <h2>收藏</h2>
+        <ul class="saved-list" id="saved">
+          <li class="empty">还没有收藏的小任务</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const ideas = [
+      { type: "fitness", tag: "健身", color: "#3f8d73", text: "做 12 分钟低强度拉伸，重点照顾肩颈和腰背。", hint: "不追求燃脂，先把身体从久坐里捞出来。" },
+      { type: "fitness", tag: "健身", color: "#3f8d73", text: "做 3 组深蹲，每组 12 个，中间休息 40 秒。", hint: "动作慢一点，比数量更重要。" },
+      { type: "fitness", tag: "健身", color: "#3f8d73", text: "出门快走 15 分钟，回来喝一杯水。", hint: "不用换装备，能出门就已经赢了一半。" },
+      { type: "fitness", tag: "健身", color: "#3f8d73", text: "跟练一个 10 分钟核心训练，只做自己能完成的版本。", hint: "中途降级动作不算失败。" },
+
+      { type: "learn", tag: "学习", color: "#3776a9", text: "看 15 分钟教程，然后写下 3 个真正听懂的点。", hint: "别急着收藏下一条，先让这一条落地。" },
+      { type: "learn", tag: "学习", color: "#3776a9", text: "读 8 页书，只摘一句你愿意带走的话。", hint: "少量阅读也算数，关键是留下痕迹。" },
+      { type: "learn", tag: "学习", color: "#3776a9", text: "学一个新词或新概念，用自己的话解释给空气听。", hint: "讲得出来，才是真的靠近了它。" },
+      { type: "learn", tag: "学习", color: "#3776a9", text: "复盘一个最近卡住的问题，写出下一步最小动作。", hint: "只找下一步，不解决整座山。" },
+
+      { type: "game", tag: "游戏", color: "#7d69a8", text: "打一局轻松模式，只以开心为目标，不冲分。", hint: "今天允许你玩得没那么上进。" },
+      { type: "game", tag: "游戏", color: "#7d69a8", text: "玩 30 分钟单机或剧情游戏，关掉任务焦虑。", hint: "把沉浸感当成今天的小奖励。" },
+      { type: "game", tag: "游戏", color: "#7d69a8", text: "清一个游戏里的小支线，完成就停。", hint: "别让支线长成另一个待办清单。" },
+      { type: "game", tag: "游戏", color: "#7d69a8", text: "约朋友打一把，输赢不复盘，只聊天。", hint: "有时候游戏只是一个见面的借口。" },
+
+      { type: "empty", tag: "放空", color: "#e7b94d", text: "离开屏幕 8 分钟，坐着发呆，不找意义。", hint: "大脑也需要没有标签的时间。" },
+      { type: "empty", tag: "放空", color: "#e7b94d", text: "泡一杯水，站在窗边慢慢喝完。", hint: "不用顺手刷手机，让这几分钟完整一点。" },
+      { type: "empty", tag: "放空", color: "#e7b94d", text: "躺下听一首歌，从头到尾不切。", hint: "只做一件事，会让时间变宽一点。" },
+      { type: "empty", tag: "放空", color: "#e7b94d", text: "闭眼呼吸 20 次，什么想法来了都先放过。", hint: "不用冥想得很专业，安静一下就好。" },
+
+      { type: "scroll", tag: "刷抖音", color: "#ef8f62", text: "刷 20 分钟抖音，看到第一个真想收藏的视频就停。", hint: "给娱乐一个边界，它会更像奖励。" },
+      { type: "scroll", tag: "刷抖音", color: "#ef8f62", text: "只刷美食或旅行内容 15 分钟，别点进争论。", hint: "今天的信息流走柔和路线。" },
+      { type: "scroll", tag: "刷抖音", color: "#ef8f62", text: "刷到一个好笑视频，发给一个会懂的人。", hint: "快乐分享出去，余味会长一点。" },
+      { type: "scroll", tag: "刷抖音", color: "#ef8f62", text: "打开抖音前先设 18 分钟计时器，响了就收工。", hint: "不是禁止快乐，是防止快乐偷家。" },
+
+      { type: "show", tag: "看剧", color: "#c26f8d", text: "看一集剧，片尾出来就停，不自动连播。", hint: "把一集看完整，比半夜连看五集舒服。" },
+      { type: "show", tag: "看剧", color: "#c26f8d", text: "重看一集你很喜欢的老剧。", hint: "熟悉的东西有时候很会安顿人。" },
+      { type: "show", tag: "看剧", color: "#c26f8d", text: "挑一部电影看前 25 分钟，喜欢就继续，不喜欢就放过。", hint: "不必把每个选择都熬成责任。" },
+      { type: "show", tag: "看剧", color: "#c26f8d", text: "看一集纪录片，记住一个新鲜细节。", hint: "轻松看，也能顺手长点见识。" },
+
+      { type: "create", tag: "创作", color: "#d95f59", text: "写 150 字小故事，开头是“门自己开了”。", hint: "只写一个场景，不需要解释完整世界。" },
+      { type: "create", tag: "创作", color: "#d95f59", text: "拍 5 张今天身边的颜色，选一张最喜欢的。", hint: "创作不一定要从空白开始。" },
+      { type: "create", tag: "创作", color: "#d95f59", text: "给未来一周的自己做一个歌单标题。", hint: "标题越具体，越像一封小信。" },
+      { type: "create", tag: "创作", color: "#d95f59", text: "画一张 10 分钟速写，主题是“窗口”。", hint: "线条乱也可以，重点是完成。" }
+    ];
+
+    const wheel = document.querySelector("#wheel");
+    const tag = document.querySelector("#tag");
+    const idea = document.querySelector("#idea");
+    const hint = document.querySelector("#hint");
+    const spin = document.querySelector("#spin");
+    const save = document.querySelector("#save");
+    const saved = document.querySelector("#saved");
+    const filters = [...document.querySelectorAll(".filter")];
+    let currentFilter = "all";
+    let currentIdea = ideas[0];
+    let degrees = 0;
+    let savedIdeas = [];
+
+    function pool() {
+      return currentFilter === "all" ? ideas : ideas.filter(item => item.type === currentFilter);
+    }
+
+    function pickIdea() {
+      const options = pool();
+      let next = options[Math.floor(Math.random() * options.length)];
+      if (options.length > 1) {
+        while (next.text === currentIdea.text) {
+          next = options[Math.floor(Math.random() * options.length)];
+        }
+      }
+      return next;
+    }
+
+    function render(item) {
+      currentIdea = item;
+      tag.textContent = item.tag;
+      tag.style.background = item.color;
+      idea.textContent = item.text;
+      hint.textContent = item.hint;
+    }
+
+    function spinWheel() {
+      degrees += 720 + Math.floor(Math.random() * 360);
+      wheel.style.transform = `rotate(${degrees}deg)`;
+      window.setTimeout(() => render(pickIdea()), 360);
+    }
+
+    function renderSaved() {
+      saved.innerHTML = "";
+      if (!savedIdeas.length) {
+        const item = document.createElement("li");
+        item.className = "empty";
+        item.textContent = "还没有收藏的小任务";
+        saved.append(item);
+        return;
+      }
+
+      savedIdeas.slice(-4).reverse().forEach(entry => {
+        const item = document.createElement("li");
+        const text = document.createElement("span");
+        const type = document.createElement("strong");
+        text.textContent = entry.text;
+        type.textContent = entry.tag;
+        item.append(text, type);
+        saved.append(item);
+      });
+    }
+
+    filters.forEach(button => {
+      button.addEventListener("click", () => {
+        currentFilter = button.dataset.filter;
+        filters.forEach(filter => filter.setAttribute("aria-pressed", String(filter === button)));
+        render(pickIdea());
+      });
+    });
+
+    spin.addEventListener("click", spinWheel);
+    save.addEventListener("click", () => {
+      if (!savedIdeas.some(entry => entry.text === currentIdea.text)) {
+        savedIdeas.push(currentIdea);
+        renderSaved();
+      }
+    });
+
+    render(currentIdea);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
